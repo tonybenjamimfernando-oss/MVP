@@ -10,7 +10,7 @@
 import { ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { githubService } from '@modules/github/service';
-import { BiometricAuth } from '@capacitor-community/biometric-auth';
+import { BiometricAuth } from '@aparajita/capacitor-biometric-auth';
 const route = useRoute(), router = useRouter();
 const loading = ref(false), error = ref('');
 const biometricReason = computed(() => route.query.reason === 'biometric');
@@ -25,8 +25,8 @@ async function login() {
 }
 async function verifyBiometric() {
   try {
-    const res = await BiometricAuth.verify({ reason: 'Desbloquear HybridApp' });
-    if (res.verified) { sessionStorage.setItem('auth', '1'); await router.push(typeof route.query.redirect === 'string' ? route.query.redirect : '/'); }
+    await BiometricAuth.authenticate({ reason: 'Desbloquear HybridApp', allowDeviceCredential: true });
+    sessionStorage.setItem('auth', '1'); await router.push(typeof route.query.redirect === 'string' ? route.query.redirect : '/');
   } catch { error.value = 'Falha na biometria. Tenta novamente.'; }
 }
 </script>
