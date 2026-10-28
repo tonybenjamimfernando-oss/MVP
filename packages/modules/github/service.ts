@@ -36,15 +36,25 @@ class GitHubService {
   /** Inicia o OAuth Device Flow (a opção Device Flow deve estar ativa na OAuth App). */
   async startDeviceFlow(): Promise<GitHubDeviceFlow> {
     const body = new URLSearchParams({ client_id: CLIENT_ID, scope: 'repo notifications user' });
-    const res = await fetch(GITHUB_DEVICE_CODE, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body,
-    });
-    const data = await res.json();
+    let res: Response;
+    try {
+      res = await fetch(GITHUB_DEVICE_CODE, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body,
+      });
+    } catch {
+      throw new Error('O navegador bloqueou a ligação direta ao OAuth do GitHub (CORS). Esta aplicação precisa de um endpoint backend seguro para iniciar a autorização. Não é um problema da tua ligação nem da palavra-passe.');
+    }
+    let data: any;
+    try {
+      data = await res.json();
+    } catch {
+      throw new Error('O GitHub devolveu uma resposta inválida ao iniciar a autorização.');
+    }
     if (!res.ok || !data.device_code || !data.user_code || !data.verification_uri) {
       throw new Error(data.error_description || data.error || 'O GitHub não iniciou a autenticação por dispositivo. Confirma se o Device Flow está ativado na OAuth App.');
     }
@@ -67,15 +77,25 @@ class GitHubService {
         device_code: deviceCode,
         grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
       });
-      const res = await fetch(GITHUB_ACCESS_TOKEN, {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body,
-      });
-      const data = await res.json();
+      let res: Response;
+      try {
+        res = await fetch(GITHUB_ACCESS_TOKEN, {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body,
+        });
+      } catch {
+        throw new Error('O navegador bloqueou a ligação ao endpoint OAuth do GitHub (CORS). A autorização por navegador exige um backend seguro.');
+      }
+      let data: any;
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error('O GitHub devolveu uma resposta inválida durante a autorização.');
+      }
       if (data.access_token) {
         apiClient.setAuthToken(data.access_token);
         return data.access_token;
