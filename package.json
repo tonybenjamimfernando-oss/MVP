@@ -10,14 +10,14 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
-    "@capacitor-community/biometric-auth": "^6.0.0",
     "@capacitor/core": "^6.2.0",
     "@capacitor-community/sqlite": "^6.0.2",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0",
     "@capacitor/app": "^6.0.0",
     "@capacitor/push-notifications": "^6.0.0",
-    "@capacitor-community/foreground-service": "^3.0.0"
+    "@capacitor-community/foreground-service": "^3.0.0",
+    "@aparajita/capacitor-biometric-auth": "^8.0.2"
   },
   "devDependencies": {
     "@capacitor/cli": "^6.2.0",
