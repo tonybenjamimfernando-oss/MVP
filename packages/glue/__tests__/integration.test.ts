@@ -7,7 +7,7 @@ import { backgroundTaskService } from '@modules/termux/service';
 describe('Glue integration', () => {
   beforeEach(async () => {
     eventBus.clear();
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
     await database.close().catch(() => undefined);
     await database.open();
     registerEventHandlers();
