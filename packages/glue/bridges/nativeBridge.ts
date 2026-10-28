@@ -1,6 +1,6 @@
 import { App } from '@capacitor/app';
 import { PushNotifications } from '@capacitor/push-notifications';
-import { BiometricAuth } from '@capacitor-community/biometric-auth';
+import { BiometricAuth } from '@aparajita/capacitor-biometric-auth';
 import { eventBus } from '@core/services/eventBus';
 import { registerEventHandlers } from '@glue/events/handlers';
 
@@ -29,8 +29,8 @@ export const NativeBridge = {
     eventBus.emit('app:boot', {});
   },
   async verifyBiometric(): Promise<boolean> {
-    const result = await BiometricAuth.verify({ reason: 'Desbloquear HybridApp' });
-    if (result.verified) eventBus.emit('auth:success', true);
-    return Boolean(result.verified);
+    await BiometricAuth.authenticate({ reason: 'Desbloquear HybridApp', allowDeviceCredential: true });
+    eventBus.emit('auth:success', true);
+    return true;
   },
 };
