@@ -1,29 +1,36 @@
-import { Plugins } from '@capacitor/core';
+import { App } from '@capacitor/app';
+import { PushNotifications } from '@capacitor/push-notifications';
+import { BiometricAuth } from '@capacitor-community/biometric-auth';
 import { eventBus } from '@core/services/eventBus';
 import { registerEventHandlers } from '@glue/events/handlers';
 
-const { PushNotifications, BiometricAuth, App } = Plugins;
+let initialized = false;
 
 export const NativeBridge = {
   async init() {
+    if (initialized) return;
+    initialized = true;
     registerEventHandlers();
 
-    // Deep Links (App URL Open)
-    App.addListener('appUrlOpen', (data) => {
+    await App.addListener('appUrlOpen', (data) => {
       eventBus.emit('deeplink:received', data.url);
     });
 
-    // Push
-    await PushNotifications.requestPermissions();
-    PushNotifications.addListener('pushNotificationReceived', (n) => {
-      eventBus.emit('notification:received', n);
+    const permission = await PushNotifications.requestPermissions();
+    if (permission.receive === 'granted') {
+      await PushNotifications.register();
+    }
+    await PushNotifications.addListener('pushNotificationReceived', (notification) => {
+      eventBus.emit('notification:received', notification);
     });
 
-    // Biometria
-    const bio = await BiometricAuth.verify({ reason: 'Desbloquear App' });
-    if (bio.verified) eventBus.emit('auth:success', true);
-
-    // Dispara boot
+    // A biometria é solicitada apenas quando a aplicação pede um desbloqueio,
+    // nunca automaticamente durante o arranque.
     eventBus.emit('app:boot', {});
+  },
+  async verifyBiometric(): Promise<boolean> {
+    const result = await BiometricAuth.verify({ reason: 'Desbloquear HybridApp' });
+    if (result.verified) eventBus.emit('auth:success', true);
+    return Boolean(result.verified);
   },
 };
