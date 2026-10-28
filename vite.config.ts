@@ -3,6 +3,8 @@ import vue from '@vitejs/plugin-vue';
 import { fileURLToPath, URL } from 'node:url';
 
 export default defineConfig({
+  // GitHub Pages hosts this project under /MVP/; local development stays at /.
+  base: process.env.GITHUB_ACTIONS ? '/MVP/' : '/',
   plugins: [vue()],
   resolve: {
     alias: {
