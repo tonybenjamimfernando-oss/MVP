@@ -21,11 +21,8 @@ class BackgroundTaskService {
 
   /** Inicia o foreground service (inspirado no TermuxService.onCreate) */
   async startForeground(): Promise<void> {
-      notificationId: this.NOTIFICATION_ID,
-      title: 'HybridApp',
-      description: 'Serviço em execução',
-      importance: 1,
-    });
+    // Nota: O plugin de foreground service foi removido por incompatibilidade.
+    // Esta é uma implementação de fallback silenciosa.
     eventBus.emit('termux:service-started', { id: this.NOTIFICATION_ID });
   }
 
