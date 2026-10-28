@@ -4,13 +4,13 @@ import { eventBus } from '@core/services/eventBus';
 
 const GITHUB_API = 'https://api.github.com';
 const GITHUB_OAUTH = 'https://github.com/login/oauth/authorize';
-const CLIENT_ID = 'SEU_CLIENT_ID'; // Configurar via env
-const REDIRECT_URI = 'hybridapp://oauth/callback';
+const CLIENT_ID = 'Ov23liwHOftIz628lfTX'; // Configurar via env
+const REDIRECT_URI = 'https://tonybenjamimfernando-oss.github.io/MVP/';
 
 /**
  * GitHubService
  * Inspirado no GitHub Android (AppAuth + Deep Links cirúrgicos).
- * - OAuth flow com deep link `hybridapp://oauth/callback`
+ * - OAuth flow com deep link `https://tonybenjamimfernando-oss.github.io/MVP/`
  * - Cache de repos e notificações
  * - Persistência de utilizador na DB local
  */
