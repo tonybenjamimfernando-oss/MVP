@@ -17,12 +17,12 @@ describe('GitHubService', () => {
     } as Response));
   });
 
-  it('generates an OAuth URL containing state and redirect URI', () => {
+  it('generates an OAuth URL containing state and the configured web redirect URI', () => {
     const url = new URL(githubService.getAuthUrl('abc123'));
     expect(url.origin + url.pathname).toBe('https://github.com/login/oauth/authorize');
     expect(url.searchParams.get('client_id')).toBeTruthy();
     expect(url.searchParams.get('state')).toBe('abc123');
-    expect(url.searchParams.get('redirect_uri')).toBe('hybridapp://oauth/callback');
+    expect(url.searchParams.get('redirect_uri')).toBe('https://tonybenjamimfernando-oss.github.io/MVP/');
   });
 
   it('resolves a valid github.com deep link', () => {
