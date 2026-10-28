@@ -6,4 +6,7 @@ dist/
 .DS_Store
 *.log
 android/.gradle/
+android/app/build/
+*.keystore
+*.jks
 ios/Pods/
