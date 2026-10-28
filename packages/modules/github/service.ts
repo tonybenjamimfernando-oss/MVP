@@ -4,9 +4,8 @@ import { eventBus } from '@core/services/eventBus';
 
 const GITHUB_API = 'https://api.github.com';
 const GITHUB_OAUTH = 'https://github.com/login/oauth/authorize';
-const GITHUB_DEVICE_CODE = 'https://github.com/login/device/code';
-const GITHUB_ACCESS_TOKEN = 'https://github.com/login/oauth/access_token';
-const CLIENT_ID = 'Ov23liwHOftIz628lfTX'; // Configurar via env
+const OAUTH_PROXY = 'https://cdauhpfszqhlojcafulo.supabase.co/functions/v1/github-oauth-proxy';
+const CLIENT_ID = 'Ov23liwHOftIz628lfTX';
 const REDIRECT_URI = 'https://tonybenjamimfernando-oss.github.io/MVP/';
 
 export interface GitHubDeviceFlow {
@@ -17,11 +16,6 @@ export interface GitHubDeviceFlow {
   expiresIn: number;
 }
 
-/**
- * GitHubService
- * Mantém o fluxo OAuth de redirecionamento para clientes compatíveis e
- * disponibiliza Device Flow para a versão web estática, sem client_secret.
- */
 class GitHubService {
   getAuthUrl(state: string): string {
     const params = new URLSearchParams({
@@ -33,30 +27,24 @@ class GitHubService {
     return `${GITHUB_OAUTH}?${params.toString()}`;
   }
 
-  /** Inicia o OAuth Device Flow (a opção Device Flow deve estar ativa na OAuth App). */
+  /** Inicia o Device Flow através de uma Edge Function para evitar CORS no browser. */
   async startDeviceFlow(): Promise<GitHubDeviceFlow> {
-    const body = new URLSearchParams({ client_id: CLIENT_ID, scope: 'repo notifications user' });
     let res: Response;
     try {
-      res = await fetch(GITHUB_DEVICE_CODE, {
+      res = await fetch(OAUTH_PROXY, {
         method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body,
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ action: 'device-code' }),
       });
     } catch {
-      throw new Error('O navegador bloqueou a ligação direta ao OAuth do GitHub (CORS). Esta aplicação precisa de um endpoint backend seguro para iniciar a autorização. Não é um problema da tua ligação nem da palavra-passe.');
+      throw new Error('Não foi possível contactar o serviço seguro de autenticação. Verifica a ligação e tenta novamente.');
     }
     let data: any;
-    try {
-      data = await res.json();
-    } catch {
-      throw new Error('O GitHub devolveu uma resposta inválida ao iniciar a autorização.');
+    try { data = await res.json(); } catch {
+      throw new Error('O serviço de autenticação devolveu uma resposta inválida.');
     }
     if (!res.ok || !data.device_code || !data.user_code || !data.verification_uri) {
-      throw new Error(data.error_description || data.error || 'O GitHub não iniciou a autenticação por dispositivo. Confirma se o Device Flow está ativado na OAuth App.');
+      throw new Error(data.error_description || data.error || 'O GitHub não iniciou a autorização. Confirma se o Device Flow está ativado na OAuth App.');
     }
     return {
       deviceCode: data.device_code,
@@ -72,39 +60,26 @@ class GitHubService {
     const deadline = Date.now() + expiresIn * 1000;
     while (Date.now() < deadline) {
       await new Promise((resolve) => window.setTimeout(resolve, interval * 1000));
-      const body = new URLSearchParams({
-        client_id: CLIENT_ID,
-        device_code: deviceCode,
-        grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
-      });
       let res: Response;
       try {
-        res = await fetch(GITHUB_ACCESS_TOKEN, {
+        res = await fetch(OAUTH_PROXY, {
           method: 'POST',
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body,
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ action: 'access-token', device_code: deviceCode }),
         });
       } catch {
-        throw new Error('O navegador bloqueou a ligação ao endpoint OAuth do GitHub (CORS). A autorização por navegador exige um backend seguro.');
+        throw new Error('A ligação ao serviço de autenticação falhou. Tenta novamente.');
       }
       let data: any;
-      try {
-        data = await res.json();
-      } catch {
-        throw new Error('O GitHub devolveu uma resposta inválida durante a autorização.');
+      try { data = await res.json(); } catch {
+        throw new Error('O serviço de autenticação devolveu uma resposta inválida.');
       }
       if (data.access_token) {
         apiClient.setAuthToken(data.access_token);
         return data.access_token;
       }
       if (data.error === 'authorization_pending') continue;
-      if (data.error === 'slow_down') {
-        interval += 5;
-        continue;
-      }
+      if (data.error === 'slow_down') { interval += 5; continue; }
       if (data.error === 'expired_token') throw new Error('O código de autorização expirou. Inicia novamente.');
       if (data.error === 'access_denied') throw new Error('A autorização foi recusada no GitHub.');
       throw new Error(data.error_description || data.error || 'Não foi possível concluir a autenticação GitHub.');
@@ -112,29 +87,19 @@ class GitHubService {
     throw new Error('O pedido expirou. Inicia novamente e autoriza dentro do prazo.');
   }
 
-  /** Compatibilidade com integrações OAuth antigas; requer backend que faça a troca segura. */
-  async exchangeCodeForToken(code: string): Promise<string> {
-    const res = await fetch(GITHUB_ACCESS_TOKEN, {
-      method: 'POST',
-      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ client_id: CLIENT_ID, code }),
-    });
-    const data = await res.json();
-    if (!data.access_token) throw new Error('A troca do código OAuth requer um backend seguro; usa o Device Flow na versão web.');
-    apiClient.setAuthToken(data.access_token);
-    return data.access_token;
+  /** A troca do OAuth de redirecionamento não deve ser feita diretamente no browser. */
+  async exchangeCodeForToken(_code: string): Promise<string> {
+    throw new Error('Este cliente usa o Device Flow seguro. Inicia sessão pelo botão Entrar com GitHub.');
   }
 
   async loadProfile(): Promise<void> {
     apiClient.configure(GITHUB_API);
-    const user = await apiClient.request<any>('/user', { useCache: true });
-
+    const user = await apiClient.request<any>('/user', { useCache: false });
     await database.execute(
       `INSERT OR REPLACE INTO users (id, username, avatar_url, auth_token, biometric_locked)
        VALUES (?, ?, ?, ?, 0)`,
       [user.id.toString(), user.login, user.avatar_url, null]
     );
-
     eventBus.emit('github:profile-loaded', user);
   }
 
@@ -161,9 +126,7 @@ class GitHubService {
       }
       const parts = u.pathname.split('/').filter(Boolean);
       return { path: '/' + parts.join('/'), params: Object.fromEntries(u.searchParams) };
-    } catch {
-      return null;
-    }
+    } catch { return null; }
   }
 }
 
