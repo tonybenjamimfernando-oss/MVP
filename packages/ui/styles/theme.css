@@ -1,0 +1,6 @@
+:root{color-scheme:light dark;--bg:#ffffff;--fg:#24292f;--card-bg:#f6f8fa;--border:#d0d7de;--muted:#57606a;--hover:#eaeef2;--accent:#488aff}
+@media(prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#c9d1d9;--card-bg:#161b22;--border:#30363d;--muted:#8b949e;--hover:#21262d;--accent:#488aff}}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body,#app{min-height:100%;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--fg);transition:background-color .2s,color .2s}
+button,input{font:inherit}button{touch-action:manipulation}a{color:var(--accent);text-decoration:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
