@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+    "baseUrl": ".",
+    "paths": {
+      "@core/*": ["packages/core/*"],
+      "@modules/*": ["packages/modules/*"],
+      "@glue/*": ["packages/glue/*"],
+      "@ui/*": ["packages/ui/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.vue", "packages/**/*.ts", "packages/**/*.vue", "vite.config.ts"]
+}
