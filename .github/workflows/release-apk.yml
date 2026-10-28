@@ -33,6 +33,8 @@ jobs:
           fi
           echo "$RELEASE_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/release.keystore"
           echo "RELEASE_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
       - name: Build release APK
         env:
           RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
