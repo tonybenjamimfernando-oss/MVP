@@ -5,6 +5,7 @@ import { eventBus } from '@core/services/eventBus';
 const GITHUB_API = 'https://api.github.com';
 const GITHUB_OAUTH = 'https://github.com/login/oauth/authorize';
 const OAUTH_PROXY = 'https://cdauhpfszqhlojcafulo.supabase.co/functions/v1/github-oauth-proxy';
+const SUPABASE_PUBLIC_KEY = 'sb_publishable_VjW2Xo-nVaXUQuE-1bWFKg_wpCLrG1q';
 const CLIENT_ID = 'Ov23liwHOftIz628lfTX';
 const REDIRECT_URI = 'https://tonybenjamimfernando-oss.github.io/MVP/';
 
@@ -33,7 +34,7 @@ class GitHubService {
     try {
       res = await fetch(OAUTH_PROXY, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', apikey: SUPABASE_PUBLIC_KEY },
         body: JSON.stringify({ action: 'device-code' }),
       });
     } catch {
@@ -64,7 +65,7 @@ class GitHubService {
       try {
         res = await fetch(OAUTH_PROXY, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json', apikey: SUPABASE_PUBLIC_KEY },
           body: JSON.stringify({ action: 'access-token', device_code: deviceCode }),
         });
       } catch {
