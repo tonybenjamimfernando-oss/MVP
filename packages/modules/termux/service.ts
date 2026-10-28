@@ -1,4 +1,3 @@
-import { CapacitorForegroundService } from 'capacitor-foreground-service';
 import { database } from '@core/services/database';
 import { eventBus } from '@core/services/eventBus';
 
@@ -22,7 +21,6 @@ class BackgroundTaskService {
 
   /** Inicia o foreground service (inspirado no TermuxService.onCreate) */
   async startForeground(): Promise<void> {
-    await CapacitorForegroundService.startService({
       notificationId: this.NOTIFICATION_ID,
       title: 'HybridApp',
       description: 'Serviço em execução',
@@ -32,7 +30,6 @@ class BackgroundTaskService {
   }
 
   async stopForeground(): Promise<void> {
-    await CapacitorForegroundService.stopService();
     eventBus.emit('termux:service-stopped', {});
   }
 
