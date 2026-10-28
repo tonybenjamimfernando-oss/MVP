@@ -1,0 +1,64 @@
+name: Build signed Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    name: Build signed APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Decode release keystore
+        shell: bash
+        env:
+          RELEASE_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE }}
+        run: |
+          if [ -z "$RELEASE_KEYSTORE" ]; then
+            echo "::error::Secret RELEASE_KEYSTORE is missing."
+            exit 1
+          fi
+          echo "$RELEASE_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/release.keystore"
+          echo "RELEASE_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+      - name: Build release APK
+        env:
+          RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          cd android
+          chmod +x ./gradlew
+          ./gradlew assembleRelease
+      - name: Locate APK
+        id: apk
+        shell: bash
+        run: |
+          APK_PATH="$(find . -type f -path '*/build/outputs/apk/*' -name '*.apk' -print -quit)"
+          if [ -z "$APK_PATH" ]; then
+            echo "::error::No APK was generated."
+            exit 1
+          fi
+          mkdir -p release-artifacts
+          cp "$APK_PATH" release-artifacts/app-release.apk
+          echo "path=release-artifacts/app-release.apk" >> "$GITHUB_OUTPUT"
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-android-apk
+          path: ${{ steps.apk.outputs.path }}
+          if-no-files-found: error
+          retention-days: 14
