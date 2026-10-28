@@ -14,7 +14,7 @@ describe('ApiClient', () => {
       json: async () => ({ id: 1, login: 'testuser' }),
     } as Response));
   });
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => { vi.useRealTimers(); });
 
   it('makes a successful request', async () => {
     const data = await apiClient.request('/user');
