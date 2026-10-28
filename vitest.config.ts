@@ -18,7 +18,6 @@ export default defineConfig({
     setupFiles: ['./packages/glue/__tests__/setup.ts'],
     include: ['packages/**/__tests__/**/*.test.ts'],
     clearMocks: true,
-    restoreMocks: true,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
