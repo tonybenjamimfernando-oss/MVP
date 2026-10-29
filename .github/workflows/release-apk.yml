@@ -1,4 +1,4 @@
-name: Build signed Android APK
+name: Build Android APK for installation
 
 on:
   workflow_dispatch:
@@ -13,119 +13,61 @@ permissions:
 
 jobs:
   build-apk:
-    name: Build signed APK
+    name: Build installable Android APK
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9
+
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
           cache: gradle
-      - name: Decode release keystore
+
+      # Debug APKs are automatically signed with Android's debug key.
+      # This intentionally avoids depending on the currently invalid release keystore secret.
+      - name: Build installable debug APK
         shell: bash
-        env:
-          RELEASE_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE }}
-        run: |
-          if [ -z "$RELEASE_KEYSTORE" ]; then
-            echo "::error::Secret RELEASE_KEYSTORE is missing."
-            exit 1
-          fi
-          echo "$RELEASE_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/release.keystore"
-          echo "RELEASE_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
-      - name: Validate release signing credentials
-        shell: bash
-        env:
-          RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
-          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
-          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          test -s "$RELEASE_KEYSTORE_PATH" || { echo "::error::Decoded keystore is empty or missing."; exit 1; }
-          for name in RELEASE_KEYSTORE_PASSWORD RELEASE_KEY_ALIAS RELEASE_KEY_PASSWORD; do
-            if [ -z "${!name:-}" ]; then
-              echo "::error::Required signing secret $name is missing or empty."
-              exit 1
-            fi
-          done
-          cat > "$RUNNER_TEMP/ValidateKeystore.java" <<'JAVA'
-          import java.io.FileInputStream;
-          import java.security.Key;
-          import java.security.KeyStore;
-          public class ValidateKeystore {
-            public static void main(String[] args) throws Exception {
-              String path = System.getenv("RELEASE_KEYSTORE_PATH");
-              char[] storePass = System.getenv("RELEASE_KEYSTORE_PASSWORD").toCharArray();
-              char[] keyPass = System.getenv("RELEASE_KEY_PASSWORD").toCharArray();
-              String alias = System.getenv("RELEASE_KEY_ALIAS");
-              Exception last = null;
-              for (String type : new String[]{"PKCS12", "JKS"}) {
-                try {
-                  KeyStore ks = KeyStore.getInstance(type);
-                  try (FileInputStream in = new FileInputStream(path)) { ks.load(in, storePass); }
-                  if (!ks.containsAlias(alias)) {
-                    System.err.println("::error::Keystore opens, but RELEASE_KEY_ALIAS does not exist in it.");
-                    System.exit(2);
-                  }
-                  Key key = ks.getKey(alias, keyPass);
-                  if (key == null || !"PRIVATE".equals(key.getFormat())) {
-                    System.err.println("::error::Alias exists, but it does not yield a private signing key.");
-                    System.exit(3);
-                  }
-                  System.out.println("Signing keystore, alias, and key password validated.");
-                  return;
-                } catch (Exception e) { last = e; }
-              }
-              System.err.println("::error::Could not validate keystore. Check RELEASE_KEYSTORE encoding, RELEASE_KEYSTORE_PASSWORD, RELEASE_KEY_ALIAS, and RELEASE_KEY_PASSWORD.");
-              if (last != null) {
-                System.err.println("Validation detail: " + last.getClass().getSimpleName());
-                if (last.getMessage() != null) System.err.println("Validation message: " + last.getMessage());
-              }
-              System.exit(4);
-            }
-          }
-          JAVA
-          javac "$RUNNER_TEMP/ValidateKeystore.java"
-          java -cp "$RUNNER_TEMP" ValidateKeystore
-      - name: Build release APK
-        env:
-          RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
-          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
-          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: |
           cd android
           chmod +x ./gradlew
-          ./gradlew assembleRelease
+          ./gradlew --no-daemon assembleDebug
+
       - name: Locate APK
         id: apk
         shell: bash
         run: |
-          APK_PATH="$(find . -type f -path '*/build/outputs/apk/*' -name '*.apk' -print -quit)"
-          if [ -z "$APK_PATH" ]; then
-            echo "::error::No APK was generated."
+          set -euo pipefail
+          APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
+          if [ ! -s "$APK_PATH" ]; then
+            echo "::error::Expected debug APK was not generated at $APK_PATH"
+            find android -type f -name '*.apk' -print || true
             exit 1
           fi
           mkdir -p release-artifacts
-          cp "$APK_PATH" release-artifacts/app-release.apk
-          echo "path=release-artifacts/app-release.apk" >> "$GITHUB_OUTPUT"
-      - name: Upload APK artifact
+          cp "$APK_PATH" release-artifacts/MVP-debug.apk
+          echo "path=release-artifacts/MVP-debug.apk" >> "$GITHUB_OUTPUT"
+
+      - name: Upload installable APK
         uses: actions/upload-artifact@v4
         with:
-          name: signed-android-apk
+          name: MVP-android-debug-apk
           path: ${{ steps.apk.outputs.path }}
           if-no-files-found: error
           retention-days: 14
