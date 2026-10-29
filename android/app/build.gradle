@@ -1,5 +1,11 @@
 apply plugin: 'com.android.application'
 
+def releaseKeystorePath = System.getenv("RELEASE_KEYSTORE_PATH")
+def releaseKeystorePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
+def releaseKeyAlias = System.getenv("RELEASE_KEY_ALIAS")
+def releaseKeyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+def releaseSigningConfigured = releaseKeystorePath && releaseKeystorePassword && releaseKeyAlias && releaseKeyPassword
+
 android {
     namespace "com.tonybenjamim.mvp"
     compileSdk rootProject.ext.compileSdkVersion
@@ -18,26 +24,21 @@ android {
     }
 
     signingConfigs {
-        release {
-            def keystorePath = System.getenv("RELEASE_KEYSTORE_PATH")
-            def keystorePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
-            def keyAliasValue = System.getenv("RELEASE_KEY_ALIAS")
-            def keyPasswordValue = System.getenv("RELEASE_KEY_PASSWORD")
-
-            if (!keystorePath || !keystorePassword || !keyAliasValue || !keyPasswordValue) {
-                throw new GradleException("Release signing requires RELEASE_KEYSTORE_PATH, RELEASE_KEYSTORE_PASSWORD, RELEASE_KEY_ALIAS and RELEASE_KEY_PASSWORD.")
+        if (releaseSigningConfigured) {
+            release {
+                storeFile file(releaseKeystorePath)
+                storePassword releaseKeystorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
             }
-
-            storeFile file(keystorePath)
-            storePassword keystorePassword
-            keyAlias keyAliasValue
-            keyPassword keyPasswordValue
         }
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
+            if (releaseSigningConfigured) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
